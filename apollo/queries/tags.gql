@@ -1,0 +1,23 @@
+query {
+	repository(owner: "Qualtrax", name: "Qualtrax") {
+		refs(last: 100, refPrefix: "refs/tags/") {
+		  totalCount
+			tags: edges {
+        node {
+          tag: target {
+            ... on Tag {
+							id
+              name
+              commit: target {
+                ... on Commit {
+									id
+                  committedDate
+                }
+              }
+            }
+          }
+        }
+      }
+		}
+	}
+}

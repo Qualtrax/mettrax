@@ -1,0 +1,27 @@
+{
+  "name": "metrax",
+  "version": "1.0.0",
+  "description": "My splendiferous Nuxt.js project",
+  "author": "Kevin Poston",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "generate": "nuxt generate",
+    "generate-graphql": "graphql-codegen",
+    "introspect": "graphql-codegen --config codegen.yml"
+  },
+  "dependencies": {
+    "@graphql-codegen/cli": "^1.5.0",
+    "@nuxtjs/apollo": "^4.0.0-rc10",
+    "cross-env": "^5.2.0",
+    "graphql": "^14.4.2",
+    "nuxt": "^2.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.9",
+    "@graphql-codegen/fragment-matcher": "1.5.0",
+    "@graphql-codegen/introspection": "1.5.0"
+  }
+}
