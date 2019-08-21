@@ -1,7 +1,6 @@
 query {
 	repository(owner: "Qualtrax", name: "Qualtrax") {
-		refs(last: 100, refPrefix: "refs/tags/") {
-		  totalCount
+		refs(last: 1, refPrefix: "refs/tags/") {
 			tags: edges {
         node {
           tag: target {

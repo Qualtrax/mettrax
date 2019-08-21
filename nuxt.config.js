@@ -39,7 +39,15 @@ export default {
   ** Nuxt.js modules
   */
 	// Add apollo module
-  modules: ['@nuxtjs/apollo'],
+  modules: [
+		'@nuxtjs/apollo',
+		'@nuxtjs/moment',
+		'@nuxtjs/axios',
+	],
+
+	axios: {
+		// proxyHeaders: false
+	},
 
   // Give apollo module options
   apollo: {

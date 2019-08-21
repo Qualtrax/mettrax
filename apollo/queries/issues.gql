@@ -1,0 +1,25 @@
+query issuesByDates($sinceDate: String!, $untilDate: String!){
+	repository(owner: "Qualtrax", name: "Qualtrax") {
+    defaultBranchRef {
+      target {
+        ... on Commit {
+          history(since: $sinceDate, until: $untilDate) {
+            totalCount
+            commits: edges {
+              commit: node {
+                ... on Commit {
+                  committedDate
+                  message
+                }
+              }
+            }
+            pageInfo {
+              endCursor
+              hasNextPage
+            }
+          }
+        }
+      }
+    }
+  }
+}
