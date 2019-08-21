@@ -10,7 +10,7 @@ export default function(context){
 
   return {
 		httpEndpoint: 'https://api.github.com/graphql',
-		getAuth:() => 'Bearer 2a6500d29e5f3f6e76a02cb8eb75e6ca2e9df808',
+		getAuth:() => 'Bearer xx',
     cache: new InMemoryCache({ fragmentMatcher })
   }
 }
