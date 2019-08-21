@@ -1,12 +1,17 @@
 <template>
   <div>
-		<h1>Major Releases Within The Last Year</h1>
-		<ul>
+	<h1>Major Releases Within The Last Year</h1>
+	<ul>
       <li v-for="(tag, index) in tags" :key="index">
           {{ tag.name }} - {{ formatDate(tag.commitDate) }}
       </li>
     </ul>
-		<h1>Commits Within The Last Year</h1>
+	<h1>Commits Within The Last Year</h1>
+	<ul>
+		<li v-for="(commit, index) in commits" :key="index">
+			{{ commit.commit.messageHeadline }} - {{ formatDate(commit.commit.committedDate) }}
+		</li>
+	</ul>
   </div>
 </template>
 
@@ -20,7 +25,8 @@ import axios from 'axios'
 export default {
 	data: function() {
 		return {
-			tags: ''
+			tags: '',
+			commits: ''
 		};
 	},
 	asyncData ({ req, params }) {
@@ -49,20 +55,48 @@ export default {
 		    }
 		  }
 		}`;
+		const getCommits = `query GetCommits($owner: String!, $name: String!, $date: GitTimestamp!){
+		  repository(owner: $owner, name: $name) {
+		    defaultBranchRef {
+		      target {
+		        ... on Commit {
+		          history(since: $date) {
+		            totalCount
+		            commits: edges {
+		              commit: node {
+		                ... on Commit {
+		                  committedDate
+		                  messageHeadline
+		                }
+		              }
+		            }
+		            pageInfo {
+		              endCursor
+		              hasNextPage
+		            }
+		          }
+		        }
+		      }
+		    }
+		  }
+		}`;
+
+		const today = moment(new Date());
+
 		const getTags = fetch('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer xx`
-        },
-        body: JSON.stringify({
-          query: getReleases,
-          variables: { owner, name }
-        })
-    })
-    .then(r => r.json())
-    .then((response) => {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Accept': 'application/json',
+				'Authorization': `Bearer 9aa300a7a0834c1425a0ba2d54beafa3c3027999`
+			},
+			body: JSON.stringify({
+			query: getReleases,
+			variables: { owner, name }
+			})
+		})
+		.then(r => r.json())
+		.then((response) => {
 			const responseTags = response.data.repository.refs.tags.filter(element => element.node.tag.name != undefined);
 			const tags = responseTags.map(element => {
 				return {
@@ -73,60 +107,38 @@ export default {
 				}
 			});
 
-			const today = moment(new Date());
 			const majorTagsWithinTheLastYear = tags.filter(tag => tag.isMajor && today.diff(tag.commitDate, 'years') == 0);
 
 			return { tags: majorTagsWithinTheLastYear }
 		});
 
-		// const getCommits = `query GetCommits($owner: String!, $name: String!, $date: GitTimestamp!){
-		//   repository(owner: $owner, name: $name) {
-		//     defaultBranchRef {
-		//       target {
-		//         ... on Commit {
-		//           history(since: $date) {
-		//             totalCount
-		//             commits: edges {
-		//               commit: node {
-		//                 ... on Commit {
-		//                   committedDate
-		//                   messageHeadline
-		//                 }
-		//               }
-		//             }
-		//             pageInfo {
-		//               endCursor
-		//               hasNextPage
-		//             }
-		//           }
-		//         }
-		//       }
-		//     }
-		//   }
-		// }`;
-		//
-		// fetch('https://api.github.com/graphql', {
-		//   method: 'POST',
-		//   headers: {
-		//       'Content-Type': 'application/json',
-		//       'Accept': 'application/json',
-		//       'Authorization': `Bearer xx`
-		//   },
-		//   body: JSON.stringify({
-		//     query: getCommits,
-		//     variables: { owner, name, today }
-		//   })
-		// })
-		// .then(r => r.json())
-		// .then(data => {
-		// 	console.log('howdy');
-		// 	console.log(data);
-		// });
+		const oneYearAgo = today.subtract(1, 'years');
+		const getCommitsWithinLastYear = fetch('https://api.github.com/graphql', {
+		  method: 'POST',
+		  headers: {
+		      'Content-Type': 'application/json',
+		      'Accept': 'application/json',
+		      'Authorization': `Bearer 9aa300a7a0834c1425a0ba2d54beafa3c3027999`
+		  },
+		  body: JSON.stringify({
+		    query: getCommits,
+		    variables: { owner, name, date: today.subtract(1, 'years')}
+		  })
+		})
+		.then(r => r.json())
+		.then(data => {
+			console.log(data.data.repository.defaultBranchRef.target.history.commits);
+			return { commits: data.data.repository.defaultBranchRef.target.history.commits }
+		});
 
-		return Promise.all([getTags])
-			.then(values => {
-					return { tags: values[0].tags}
-			});
+		return Promise.all([getTags, getCommitsWithinLastYear])
+		.then(values => {
+			console.log(values);
+			return { 
+				tags: values[0].tags,
+				commits: values[1].commits
+			}
+		});
 	},
 	methods: {
 		formatDate: function(date) {
