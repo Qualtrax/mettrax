@@ -23,7 +23,7 @@
             <li
               v-for="(issue, issueIndex) in milestone.node.issues.edges"
               :key="issueIndex"
-            >{{ issue.node.number }}</li>
+            >{{ issue.node.number }} - {{ issue.node.title }}</li>
           </ul>
         </li>
       </ul>
@@ -56,14 +56,15 @@ export default {
       milestones: ""
     };
   },
-  asyncData({ req, params }) {
+  async asyncData({ req, params }) {
     const owner = "Qualtrax";
     const qualtraxRepo = "Qualtrax";
     const qualtraxWebRepo = "qualtrax-web";
+		const apiToken = "xx";
 
     const getReleases = `query GetReleases($owner: String!, $name: String!){
 		  repository(owner: $owner, name: $name) {
-		    refs(last: 30, refPrefix: "refs/tags/") {
+		    refs(last: 100, refPrefix: "refs/tags/") {
 		      tags: edges {
 		        node {
 		          tag: target {
@@ -83,12 +84,12 @@ export default {
 		    }
 		  }
 		}`;
-    const getCommits = `query GetCommits($owner: String!, $name: String!, $date: GitTimestamp!){
+    const getCommits = `query GetCommits($owner: String!, $name: String!, $date: GitTimestamp!, $after: String){
 		  repository(owner: $owner, name: $name) {
 		    defaultBranchRef {
 		      target {
 		        ... on Commit {
-		          history(since: $date) {
+		          history(since: $date, after: $after) {
 		            totalCount
 		            commits: edges {
 		              commit: node {
@@ -119,6 +120,7 @@ export default {
 							edges {
 								node {
 									number
+									title
 								}
 							}
 						}
@@ -136,6 +138,7 @@ export default {
 							edges {
 								node {
 									number
+									title
 								}
 							}
 						}
@@ -165,133 +168,137 @@ export default {
       return tagParts[2] == "0" && tagParts[3] == "0";
     };
 
-    const getTags = fetch("https://api.github.com/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer xx`
-      },
-      body: JSON.stringify({
-        query: getReleases,
-        variables: { owner, name: qualtraxRepo }
-      })
-    })
-      .then(r => r.json())
-      .then(response => {
-        const responseTags = response.data.repository.refs.tags.filter(
-          element => element.node.tag.name != undefined
-        );
-        const tags = responseTags.map(element => {
-          return {
-            id: element.node.tag.id,
-            name: element.node.tag.name,
-            commitDate:
-              element.node.tag.commit != undefined
-                ? moment(element.node.tag.commit.committedDate)
-                : "",
-            isMajor:
-              element.node.tag != undefined
-                ? isMajorTag(element.node.tag.name)
-                : ""
-          };
-        });
+    const getTags = async function() {
+			return fetch("https://api.github.com/graphql", {
+	      method: "POST",
+	      headers: {
+	        "Content-Type": "application/json",
+	        Accept: "application/json",
+	        Authorization: `Bearer ${apiToken}`
+	      },
+	      body: JSON.stringify({
+	        query: getReleases,
+	        variables: { owner, name: qualtraxRepo }
+	      })
+	    })
+			.then(r => r.json());
+		};
 
-        const majorTagsWithinTheLastYear = tags.filter(
-          tag => today.diff(tag.commitDate, "years") <= 0
-          //   tag => tag.isMajor && today.diff(tag.commitDate, "years") <= 0
-        );
-
-        const sortedTags = majorTagsWithinTheLastYear.sort(
-          (a, b) => a.commitDate < b.commitDate
-        );
-
-        return { tags: sortedTags };
-      });
-
-    const oneYearAgo = today.subtract(1, "years");
-    const getCommitsWithinLastYear = fetch("https://api.github.com/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer xx`
-      },
-      body: JSON.stringify({
-        query: getCommits,
-        variables: { owner, name: qualtraxRepo, date: oneYearAgo }
-      })
-    })
-      .then(r => r.json())
-      .then(data => {
-        const commitsWithIssueNumbers = data.data.repository.defaultBranchRef.target.history.commits.filter(
-          element => element.commit.messageHeadline.startsWith("[")
-        );
-        const commits = commitsWithIssueNumbers.map(element => {
-          return {
-            committedDate: element.commit.committedDate,
-            messageHeadline: element.commit.messageHeadline,
-            repository: parseRepositoryFromHeadline(
-              element.commit.messageHeadline
-            ),
-            issueNumber: parseIssueNumberFromMessage(
-              element.commit.messageHeadline
-            )
-          };
-        });
-
-        return {
-          commits
-        };
-      });
-
-    const getMilestonesWithinLastYear = fetch(
-      "https://api.github.com/graphql",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer xx`
-        },
-        body: JSON.stringify({
-          query: getMilestones,
-          variables: { owner, qualtraxRepo, qualtraxWebRepo }
-        })
-      }
-    )
-      .then(r => r.json())
-      .then(response => {
-		const qualtraxEdges = response.data.qualtraxRepo.milestones.edges;
-		const qualtraxWebEdges = response.data.qualtraxWebRepo.milestones.edges;
-		const combinedRepos = qualtraxEdges.concat(qualtraxWebEdges);
-        const withinLastYear = combinedRepos.filter(milestone => {
-          return today.diff(milestone.node.dueOn, "years") <= 0;
-        });
-		const milestones = withinLastYear.sort((a, b) => a.node.dueOn < b.node.dueOn);
-		
-        return {
-          milestones
-        };
-      });
-
-    return Promise.all([
-      getTags,
-      getCommitsWithinLastYear,
-      getMilestonesWithinLastYear
-    ]).then(values => {
+		const tagsResponse = await getTags();
+    const responseTags = tagsResponse.data.repository.refs.tags.filter(
+      element => element.node.tag.name != undefined
+    );
+    const allTags = responseTags.map(element => {
       return {
-        tags: values[0].tags,
-        commits: values[1].commits,
-        milestones: values[2].milestones
+        id: element.node.tag.id,
+        name: element.node.tag.name,
+        commitDate:
+          element.node.tag.commit != undefined
+            ? moment(element.node.tag.commit.committedDate)
+            : "",
+        isMajor:
+          element.node.tag != undefined
+            ? isMajorTag(element.node.tag.name)
+            : ""
       };
     });
+
+		const todaysDate = new Date();
+    const majorTagsWithinTheLastYear = allTags.filter(
+      tag => {
+				return tag.commitDate.diff(todaysDate, "years") >= 0;
+			}
+    );
+    const tags = majorTagsWithinTheLastYear.sort(
+      (a, b) => a.commitDate < b.commitDate
+    );
+
+      // });
+
+    const oneYearAgo = today.subtract(1, "years");
+    const getCommitsWithinLastYear = async function(cursor) {
+			return fetch("https://api.github.com/graphql", {
+	      method: "POST",
+	      headers: {
+	        "Content-Type": "application/json",
+	        Accept: "application/json",
+	        Authorization: `Bearer ${apiToken}`
+	      },
+	      body: JSON.stringify({
+	        query: getCommits,
+	        variables: { owner, name: qualtraxRepo, date: oneYearAgo.toDate(), after: cursor}
+	      })
+	    })
+			.then(r => r.json());
+		};
+
+		let allCommits = [];
+		let hasNextPage = true;
+		let cursor = null;
+
+		while(hasNextPage) {
+			let commitsResponse = await getCommitsWithinLastYear(cursor);
+			allCommits.push(...commitsResponse.data.repository.defaultBranchRef.target.history.commits);
+
+			cursor = commitsResponse.data.repository.defaultBranchRef.target.history.pageInfo.endCursor;
+			hasNextPage = commitsResponse.data.repository.defaultBranchRef.target.history.pageInfo.hasNextPage;
+		}
+
+    const commitsWithIssueNumbers = allCommits.filter(
+      element => element.commit.messageHeadline.startsWith("[")
+    );
+    const commits = commitsWithIssueNumbers.map(element => {
+      return {
+        committedDate: element.commit.committedDate,
+        messageHeadline: element.commit.messageHeadline,
+        repository: parseRepositoryFromHeadline(
+          element.commit.messageHeadline
+        ),
+        issueNumber: parseIssueNumberFromMessage(
+          element.commit.messageHeadline
+        )
+      };
+    });
+
+    const getMilestonesWithinLastYear = async function() {
+			return fetch(
+	      "https://api.github.com/graphql",
+	      {
+	        method: "POST",
+	        headers: {
+	          "Content-Type": "application/json",
+	          Accept: "application/json",
+	          Authorization: `Bearer ${apiToken}`
+	        },
+	        body: JSON.stringify({
+	          query: getMilestones,
+	          variables: { owner, qualtraxRepo, qualtraxWebRepo }
+	        })
+	      }
+	    )
+      .then(r => r.json());
+		};
+		const milestonesResponse = await getMilestonesWithinLastYear();
+		const qualtraxEdges = milestonesResponse.data.qualtraxRepo.milestones.edges;
+		const qualtraxWebEdges = milestonesResponse.data.qualtraxWebRepo.milestones.edges;
+		const combinedRepos = qualtraxEdges.concat(qualtraxWebEdges);
+    const withinLastYear = combinedRepos.filter(milestone => {
+      return today.diff(milestone.node.dueOn, "years") <= 0;
+    });
+		const milestones = withinLastYear.sort((a, b) => a.node.dueOn < b.node.dueOn);
+
+		return {
+			tags,
+			milestones,
+			commits
+		};
   },
   methods: {
     formatDate: function(date) {
       return moment(date).format("MMM Do YYYY");
     },
     twoWeeksAgo: function(date) {
+			// milestone start date will be 1 week for ghweb < 42
       return moment(date).subtract(2, "weeks");
     }
   }
