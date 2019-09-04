@@ -3,7 +3,7 @@ import queries from "../queries/gitHubQueries";
 const owner = "Qualtrax";
 const qualtraxRepo = "Qualtrax";
 const qualtraxWebRepo = "qualtrax-web";
-const apiToken = "";
+const apiToken = "xx";
 
 const getTagsSince = async function(sinceDate) {
   return fetch("https://api.github.com/graphql", {

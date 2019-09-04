@@ -61,23 +61,17 @@ const getMilestonesQuery = `query GetMilestones($owner: String!, $qualtraxRepo: 
 
 const getCommitsQuery = `query GetCommits($owner: String!, $name: String!, $date: GitTimestamp!, $after: String){
   repository(owner: $owner, name: $name) {
-    defaultBranchRef {
-      target {
-        ... on Commit {
-          history(since: $date, after: $after) {
-            totalCount
-            commits: edges {
-              commit: node {
-                ... on Commit {
-                  committedDate
-                  messageHeadline
-                }
-              }
-            }
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
+    master :object(expression: "master") {
+      ... on Commit {
+        history(since: $date, after: $after) {
+          commits :nodes {
+            oid
+            messageHeadline
+            committedDate
+          }
+          pageInfo {
+            endCursor
+            hasNextPage
           }
         }
       }

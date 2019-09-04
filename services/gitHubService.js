@@ -19,7 +19,7 @@ const getTagsSince = async function(sinceDate) {
       name: element.node.tag.name,
       commitDate:
         element.node.tag.commit != undefined
-          ? moment(element.node.tag.commit.committedDate)
+          ? element.node.tag.commit.committedDate
           : "",
       isMajor:
         element.node.tag != undefined ? isMajorTag(element.node.tag.name) : ""
@@ -28,18 +28,21 @@ const getTagsSince = async function(sinceDate) {
 
   const todaysDate = new Date();
   const majorTagsWithinTheLastYear = allTags.filter(tag => {
-    return tag.commitDate.diff(todaysDate, "years") >= 0;
+    return moment(tag.commitDate).diff(todaysDate, "years") >= 0;
   });
-  const tags = majorTagsWithinTheLastYear.sort(
-    (a, b) => a.commitDate < b.commitDate
-  );
+
+  const tags = majorTagsWithinTheLastYear.sort((a, b) => {
+    if (a.commitDate > b.commitDate) return -1;
+    if (a.commitDate < b.commitDate) return 1;
+
+    return 0;
+  });
 
   return tags;
 };
 
 const getMilestonesSince = async function(sinceDate) {
   const milestonesResponse = await gitHubRepository.getMilestonesSince(sinceDate);
-  console.log(milestonesResponse);
   const qualtraxEdges = milestonesResponse.data.qualtraxRepo.milestones.edges;
   const qualtraxWebEdges = milestonesResponse.data.qualtraxWebRepo.milestones.edges;
   const combinedRepos = qualtraxEdges.concat(qualtraxWebEdges);
@@ -48,7 +51,12 @@ const getMilestonesSince = async function(sinceDate) {
     return today.diff(milestone.node.dueOn, "years") <= 0;
   });
 
-  return withinLastYear.sort((a, b) => a.node.dueOn < b.node.dueOn);
+  return withinLastYear.sort((a, b) => {
+    if (a.node.dueOn > b.node.dueOn) return -1;
+    if (a.node.dueOn < b.node.dueOn) return 1;
+
+    return 0;
+  });
 };
 
 const parseRepositoryFromHeadline = function(messageHeadline) {
@@ -71,32 +79,76 @@ const getCommitsSince = async function(sinceDate) {
 
   while(hasNextPage) {
     let commitsResponse = await gitHubRepository.getCommitsSince(sinceDate, cursor);
-    allCommits.push(...commitsResponse.data.repository.defaultBranchRef.target.history.commits);
+    allCommits.push(...commitsResponse.data.repository.master.history.commits);
 
-    cursor = commitsResponse.data.repository.defaultBranchRef.target.history.pageInfo.endCursor;
-    hasNextPage = commitsResponse.data.repository.defaultBranchRef.target.history.pageInfo.hasNextPage;
+    cursor = commitsResponse.data.repository.master.history.pageInfo.endCursor;
+    hasNextPage = commitsResponse.data.repository.master.history.pageInfo.hasNextPage;
   }
 
   const commitsWithIssueNumbers = allCommits.filter(
-    element => element.commit.messageHeadline.startsWith("[")
+    commit => commit.messageHeadline.startsWith("[")
   );
 
-  return commitsWithIssueNumbers.map(element => {
+  return commitsWithIssueNumbers.map(commit => {
     return {
-      committedDate: element.commit.committedDate,
-      messageHeadline: element.commit.messageHeadline,
+      committedDate: commit.committedDate,
+      messageHeadline: commit.messageHeadline,
       repository: parseRepositoryFromHeadline(
-        element.commit.messageHeadline
+        commit.messageHeadline
       ),
       issueNumber: parseIssueNumberFromMessage(
-        element.commit.messageHeadline
+        commit.messageHeadline
       )
     };
   });
 }
 
+const combineTagsWithCommits = function (tags, commits) {
+  const tagsWithCommits = [];
+  let currentTag = tags[0];
+
+  commits.forEach(commit => {
+    let tagWithIssues = { issues: [] };
+    const tagForCommit = tags.find(tag => tag.commitDate == commit.committedDate);
+    
+    if (tagForCommit != undefined) {
+      if (tagWithIssues != {})
+        tagsWithCommits.push(tagWithIssues);
+
+      currentTag = tagForCommit;
+      tagWithIssues = {
+        name: currentTag.name,
+        dateTagged: currentTag.commitDate,
+        issues: []
+      };
+      // tagsWithCommits[currentTag.name].name = currentTag.name;
+      // tagsWithCommits[currentTag.name].dateTagged = currentTag.commitDate;
+      // tagsWithCommits[currentTag.name].issues = [];
+    }
+
+    tagWithIssues.issues.push(commit);
+  });
+
+  // for (let i = 0; i < tags.length; i++) {
+  //   const tag = tags[i];
+  //   const lastTagDate = i == tags.length - 1 ? new Date() : tags[i + 1].commitDate;
+
+  //   const commitsInTag = commits.filter(commit => {
+  //     return commit.committedDate <= tag.commitDate && commit.committedDate > lastTagDate;
+  //   });
+
+  //   tagsWithCommits.push({
+  //     name: tag.name,
+  //     dateTagged: tag.commitDate,
+  //     commits: commitsInTag
+  //   });
+  // }
+  return tagsWithCommits;
+}
+
 export default {
   getTagsSince,
   getMilestonesSince,
-  getCommitsSince
+  getCommitsSince,
+  combineTagsWithCommits
 };
