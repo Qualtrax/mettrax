@@ -3,16 +3,17 @@
     <div>
       <h1>Combined</h1>
       <ul>
-          <li v-for="(tag, index) in commitsPerTag" :key="index">
-            <b>{{ tag.name }}</b>
-            - {{ formatDate(tag.dateTagged) }}
-            <ul>
-              <li v-for="(issue, commitIndex) in tag.issues" :key="commitIndex">
-                {{ issue.messageHeadline }} - {{ formatDate(issue.committedDate) }}
-              </li>
-            </ul>
-          </li>
-        </ul>
+        <li v-for="(tag, index) in commitsPerTag" :key="index">
+          <b>{{ tag.name }}</b>
+          - {{ formatDate(tag.commitDate) }}
+          <ul>
+            <li
+              v-for="(issue, commitIndex) in tag.issues"
+              :key="commitIndex"
+            >{{ issue.messageHeadline }} - {{ formatDate(issue.committedDate) }}</li>
+          </ul>
+        </li>
+      </ul>
     </div>
     <div class="container">
       <div>
@@ -74,24 +75,23 @@ export default {
     const oneYearAgo = today.subtract(1, "years");
 
     const tags = await gitHubService.getTagsSince(null);
-		const milestones = await gitHubService.getMilestonesSince(null);
+    const milestones = await gitHubService.getMilestonesSince(null);
     const commits = await gitHubService.getCommitsSince(oneYearAgo);
     const commitsPerTag = gitHubService.combineTagsWithCommits(tags, commits);
-    console.log(commitsPerTag);
 
-		return {
-			tags,
-			milestones,
+    return {
+      tags,
+      milestones,
       commits,
       commitsPerTag
-		};
+    };
   },
   methods: {
     formatDate: function(date) {
       return moment(date).format("MMM Do YYYY");
     },
     twoWeeksAgo: function(date) {
-			// milestone start date will be 1 week for ghweb < 42
+      // milestone start date will be 1 week for ghweb < 42
       return moment(date).subtract(2, "weeks");
     }
   }

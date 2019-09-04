@@ -10,7 +10,8 @@
     "start": "nuxt start",
     "generate": "nuxt generate",
     "generate-graphql": "graphql-codegen",
-    "introspect": "graphql-codegen --config codegen.yml"
+    "introspect": "graphql-codegen --config codegen.yml",
+    "test": "jest"
   },
   "dependencies": {
     "@graphql-codegen/cli": "^1.5.0",
@@ -22,8 +23,16 @@
     "nuxt": "^2.4.0"
   },
   "devDependencies": {
-    "nodemon": "^1.18.9",
+    "@babel/core": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
     "@graphql-codegen/fragment-matcher": "1.5.0",
-    "@graphql-codegen/introspection": "1.5.0"
+    "@graphql-codegen/introspection": "1.5.0",
+    "@vue/test-utils": "^1.0.0-beta.29",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-jest": "^24.9.0",
+    "jest": "^24.9.0",
+    "jest-serializer-vue": "^2.0.2",
+    "nodemon": "^1.18.9",
+    "vue-jest": "^3.0.4"
   }
 }

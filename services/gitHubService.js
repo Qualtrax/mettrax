@@ -104,51 +104,47 @@ const getCommitsSince = async function(sinceDate) {
 }
 
 const combineTagsWithCommits = function (tags, commits) {
+
+  // get all major version tag commits and then loop through them figuring out what commits belong with what tag
+  // get all minor version tag commits
+  // find the difference between the minor version to it's major
+  // remove those commits from the major commits
+  // find the earliest tag that the commit belongs to and what other minor versions also have that commit (they are rollups)
+
   const tagsWithCommits = [];
-  let currentTag = tags[0];
+  tags.forEach(tag => tagsWithCommits.push({ ... tag, issues: [] }));
 
   commits.forEach(commit => {
-    let tagWithIssues = { issues: [] };
-    const tagForCommit = tags.find(tag => tag.commitDate == commit.committedDate);
-    
-    if (tagForCommit != undefined) {
-      if (tagWithIssues != {})
-        tagsWithCommits.push(tagWithIssues);
+    const tagForCommit = getTagForCommit(commit, tags);
 
-      currentTag = tagForCommit;
-      tagWithIssues = {
-        name: currentTag.name,
-        dateTagged: currentTag.commitDate,
-        issues: []
-      };
-      // tagsWithCommits[currentTag.name].name = currentTag.name;
-      // tagsWithCommits[currentTag.name].dateTagged = currentTag.commitDate;
-      // tagsWithCommits[currentTag.name].issues = [];
+    for (let i = 0; i < tagsWithCommits.length; i++) {
+      if (tagsWithCommits[i].name == tagForCommit.name) {
+        tagsWithCommits[i].issues.push(commit);
+        break;
+      }
     }
-
-    tagWithIssues.issues.push(commit);
   });
 
-  // for (let i = 0; i < tags.length; i++) {
-  //   const tag = tags[i];
-  //   const lastTagDate = i == tags.length - 1 ? new Date() : tags[i + 1].commitDate;
-
-  //   const commitsInTag = commits.filter(commit => {
-  //     return commit.committedDate <= tag.commitDate && commit.committedDate > lastTagDate;
-  //   });
-
-  //   tagsWithCommits.push({
-  //     name: tag.name,
-  //     dateTagged: tag.commitDate,
-  //     commits: commitsInTag
-  //   });
-  // }
+  console.log(tagsWithCommits);
   return tagsWithCommits;
+}
+
+const getTagForCommit = function(commit, tags) {
+  for(let i = 0; i < tags.length; i++) {
+    const commitDateIsLessThanTagDate = commit.committedDate <= tags[i].commitDate;
+    const commitDateIsGreaterThanTheNextTagsDate = i == tags.length - 1 || (i != tags.length - 1 && commit.committedDate > tags[i + 1].commitDate);
+    
+    if (commitDateIsLessThanTagDate && commitDateIsGreaterThanTheNextTagsDate)
+      return tags[i]; 
+  }
+
+  return null;
 }
 
 export default {
   getTagsSince,
   getMilestonesSince,
   getCommitsSince,
-  combineTagsWithCommits
+  combineTagsWithCommits,
+  getTagForCommit
 };
