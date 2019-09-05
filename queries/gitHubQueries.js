@@ -79,8 +79,29 @@ const getCommitsQuery = `query GetCommits($owner: String!, $name: String!, $date
   }
 }`;
 
+const getCommitsForTagQuery = `query GetCommitsForTag($owner: String!, $name: String!, $tagName: String!){
+  repository(owner: $owner, name: $name) {
+    tagBranch :object(expression: $tagName) {
+      ... on Commit {
+        history(first: 15) {
+          commits :nodes {
+            oid
+            messageHeadline
+            committedDate
+          }
+          pageInfo {
+            endCursor
+            hasNextPage
+          }
+        }
+      }
+    }
+  }
+}`;
+
 export default {
   getTagsQuery,
   getMilestonesQuery,
-  getCommitsQuery
+  getCommitsQuery,
+  getCommitsForTagQuery
 };

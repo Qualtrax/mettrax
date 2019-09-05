@@ -1,19 +1,41 @@
 <template>
   <div>
-    <div>
-      <h1>Combined</h1>
-      <ul>
-        <li v-for="(tag, index) in commitsPerTag" :key="index">
-          <b>{{ tag.name }}</b>
-          - {{ formatDate(tag.commitDate) }}
-          <ul>
-            <li
-              v-for="(issue, commitIndex) in tag.issues"
-              :key="commitIndex"
-            >{{ issue.messageHeadline }} - {{ formatDate(issue.committedDate) }}</li>
-          </ul>
-        </li>
-      </ul>
+    <div class="container">
+        <div>
+            <h1>Major Releases</h1>
+            <ul>
+                <li v-for="(tag, index) in commitsPerTag" :key="index">
+                <b>{{ tag.name }}</b>
+                - {{ formatDate(tag.commitDate) }}
+                <ul>
+                    <li
+                    v-for="(issue, commitIndex) in tag.issues"
+                    :key="commitIndex"
+                    >{{ issue.messageHeadline }}</li>
+                </ul>
+                </li>
+            </ul>
+        </div>
+        <div>
+            <h1>Hotfixes</h1>
+            <ul>
+                <li v-for="(hotfix, index) in hotfixes" :key="index">
+                    <b>{{hotfix.version}}</b>
+                    <p>Commits:</p>
+                    <ul>
+                        <li v-for="(commit, commitIndex) in hotfix.commits" :key="commitIndex">
+                            {{ commit.messageHeadline }}
+                        </li>
+                    </ul>
+                    <p>Rollups:</p>
+                    <ul>
+                        <li v-for="(rollup, rollupIndex) in hotfix.rollups" :key="rollupIndex">
+                            {{ rollup }}
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
     </div>
     <div class="container">
       <div>
@@ -67,7 +89,8 @@ export default {
       tags: "",
       commits: "",
       milestones: "",
-      commitsPerTag: ""
+      commitsPerTag: "",
+      hotfixes: ""
     };
   },
   async asyncData({ req, params }) {
@@ -77,13 +100,14 @@ export default {
     const tags = await gitHubService.getTagsSince(null);
     const milestones = await gitHubService.getMilestonesSince(null);
     const commits = await gitHubService.getCommitsSince(oneYearAgo);
-    const commitsPerTag = gitHubService.combineTagsWithCommits(tags, commits);
+    const { commitsPerTag, hotfixes } = await gitHubService.combineTagsWithCommits(tags, commits, milestones);
 
     return {
       tags,
       milestones,
       commits,
-      commitsPerTag
+      commitsPerTag,
+      hotfixes
     };
   },
   methods: {

@@ -875,18 +875,32 @@ const commits = [
 ];
 
 describe("gitHubService", () => {
-    test("combineTagsWithCommits has a node for every tag", () => {
-        const tagsWithCommits = gitHubService.combineTagsWithCommits(tags, commits);
+    // test("combineTagsWithCommits has a node for every tag", () => {
+    //     const tagsWithCommits = gitHubService.combineTagsWithCommits(tags, commits);
 
-        expect(tagsWithCommits.length).toEqual(tags.length);
+    //     expect(tagsWithCommits.length).toEqual(tags.length);
+    // });
+
+    // test("combineTagsWithCommits should include all commits", () => {
+    //     const tagsWithCommits = gitHubService.combineTagsWithCommits(tags, commits);
+    //     const allCommits = [];
+    //     tagsWithCommits.forEach(tagWithCommits => allCommits.push(...tagWithCommits.issues));
+
+    //     expect(allCommits.length).toEqual(commits.length);
+    // });
+
+    test("getPreviousTagNumber returns previous tag for minor version", () => {
+      const previousTagNumber = gitHubService.getPreviousTagNumber('2015.3.0.1');
+
+      expect(previousTagNumber).toEqual('2015.3.0.0');
     });
 
-    test("combineTagsWithCommits should include all commits", () => {
-        const tagsWithCommits = gitHubService.combineTagsWithCommits(tags, commits);
-        const allCommits = [];
-        tagsWithCommits.forEach(tagWithCommits => allCommits.push(...tagWithCommits.issues));
+    test("getCommitsForMajorRelease returns correct commits for 2019.3.0.0 release", () => {
+        const majorTags = tags.filter(tag => tag.isMajor);
+        
+        const majorCommits = gitHubService.getCommitsForMajorRelease(majorTags[0], majorTags[1], commits);
 
-        expect(allCommits.length).toEqual(commits.length);
+        expect(majorCommits.length).toEqual(10);
     });
 
     test("getTagForCommit returns correct tag for commit", () => {

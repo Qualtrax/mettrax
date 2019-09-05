@@ -55,8 +55,28 @@ const getCommitsSince = async function(sinceDate, cursor) {
   }).then(r => r.json());
 };
 
+const getCommitsForTag = async function(tagName) {
+  return fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${apiToken}`
+    },
+    body: JSON.stringify({
+      query: queries.getCommitsForTagQuery,
+      variables: {
+        owner,
+        name: qualtraxRepo,
+        tagName
+      }
+    })
+  }).then(r => r.json());
+}
+
 export default {
   getTagsSince,
   getMilestonesSince,
-  getCommitsSince
+  getCommitsSince,
+  getCommitsForTag
 };
