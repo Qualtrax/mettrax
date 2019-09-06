@@ -11,7 +11,7 @@
                     <li
                     v-for="(issue, commitIndex) in tag.issues"
                     :key="commitIndex"
-                    >{{ issue.messageHeadline }}</li>
+                    >{{ issue.messageHeadline }} (started: {{ formatDate(issue.startDate) }})</li>
                 </ul>
                 </li>
             </ul>
@@ -24,7 +24,7 @@
                     <p>Commits:</p>
                     <ul>
                         <li v-for="(commit, commitIndex) in hotfix.commits" :key="commitIndex">
-                            {{ commit.messageHeadline }}
+                            {{ commit.messageHeadline }} (started: {{ formatDate(commit.startDate) }})
                         </li>
                     </ul>
                     <p>Rollups:</p>
@@ -52,7 +52,7 @@
         <ul>
           <li v-for="(milestone, index) in milestones" :key="index">
             <p>
-              <b>{{ milestone.node.title }}</b>
+              <b>{{ milestone.node.title }} - {{ milestone.repo }}</b>
             </p>
             <p>Duedate: {{ formatDate(milestone.node.dueOn) }}</p>
             <p>Started: {{ formatDate(twoWeeksAgo(milestone.node.dueOn)) }}</p>
@@ -99,7 +99,7 @@ export default {
 
     const tags = await gitHubService.getTagsSince(null);
     const milestones = await gitHubService.getMilestonesSince(null);
-    const commits = await gitHubService.getCommitsSince(oneYearAgo);
+    const commits = await gitHubService.getCommitsSince(oneYearAgo, milestones);
     const { commitsPerTag, hotfixes } = await gitHubService.combineTagsWithCommits(tags, commits, milestones);
 
     return {

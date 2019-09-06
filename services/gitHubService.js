@@ -43,12 +43,22 @@ const getTagsSince = async function(sinceDate) {
 
 const getMilestonesSince = async function(sinceDate) {
   const milestonesResponse = await gitHubRepository.getMilestonesSince(sinceDate);
-  const qualtraxEdges = milestonesResponse.data.qualtraxRepo.milestones.edges;
-  const qualtraxWebEdges = milestonesResponse.data.qualtraxWebRepo.milestones.edges;
+  const qualtraxEdges = milestonesResponse.data.qualtraxRepo.milestones.edges.map(edge => {
+    return {
+      ...edge,
+      repo: 'qualtrax'
+    }
+  });
+  const qualtraxWebEdges = milestonesResponse.data.qualtraxWebRepo.milestones.edges.map(edge => {
+    return {
+      ...edge,
+      repo: 'qualtrax-web'
+    }
+  });
   const combinedRepos = qualtraxEdges.concat(qualtraxWebEdges);
-  const today = moment(new Date());
+  const twoWeeksAgo = moment(new Date()).subtract(2, "weeks")
   const withinLastYear = combinedRepos.filter(milestone => {
-    return today.diff(milestone.node.dueOn, "years") <= 0;
+    return twoWeeksAgo.diff(milestone.node.dueOn, "years") <= 0;
   });
 
   return withinLastYear.sort((a, b) => {
@@ -72,7 +82,17 @@ const parseIssueNumberFromMessage = function(messageHeadline) {
   else return issueHeading.replace("gh", "").replace("GH", "");
 };
 
-const getCommitsSince = async function(sinceDate) {
+const getStartDateOfMilestone = function (milestone) {
+  if (milestone == undefined)
+    return undefined;
+
+  if (milestone.repo == 'qualtrax-web' && milestone.node.title.split(' ')[1] < 42)
+    return moment(milestone.node.dueOn).subtract(1, "weeks");
+  
+  return moment(milestone.node.dueOn).subtract(2, "weeks");
+}
+
+const getCommitsSince = async function(sinceDate, milestones) {
   let allCommits = [];
   let hasNextPage = true;
   let cursor = null;
@@ -90,6 +110,14 @@ const getCommitsSince = async function(sinceDate) {
   );
 
   return commitsWithIssueNumbers.map(commit => {
+    const issueNumber = parseIssueNumberFromMessage(commit.messageHeadline);
+    const milestoneForCommit = milestones.find(milestone => milestone.node.issues.edges.find(issue => issue.node.number == issueNumber) != undefined);
+    
+    if(milestoneForCommit == undefined)
+      console.log(`not here boss: ${commit.messageHeadline}`);
+    else
+      console.log(milestoneForCommit.node.title);
+
     return {
       committedDate: commit.committedDate,
       hash: commit.oid,
@@ -97,9 +125,8 @@ const getCommitsSince = async function(sinceDate) {
       repository: parseRepositoryFromHeadline(
         commit.messageHeadline
       ),
-      issueNumber: parseIssueNumberFromMessage(
-        commit.messageHeadline
-      )
+      issueNumber,
+      startDate: getStartDateOfMilestone(milestoneForCommit)
     };
   });
 }
@@ -131,6 +158,9 @@ const combineTagsWithCommits = async function(tags, commits, milestones) {
       commit => commit.messageHeadline.startsWith("[")
     );
     const commits = commitsWithIssueNumbers.map(commit => {
+      const issueNumber = parseIssueNumberFromMessage(commit.messageHeadline);
+      const milestoneForCommit = milestones.find(milestone => milestone.node.issues.edges.find(issue => issue.node.number == issueNumber) != undefined);
+      
       return {
         committedDate: commit.committedDate,
         hash: commit.oid,
@@ -138,9 +168,8 @@ const combineTagsWithCommits = async function(tags, commits, milestones) {
         repository: parseRepositoryFromHeadline(
           commit.messageHeadline
         ),
-        issueNumber: parseIssueNumberFromMessage(
-          commit.messageHeadline
-        )
+        issueNumber,
+        startDate: getStartDateOfMilestone(milestoneForCommit)
       };
     });
 
@@ -213,9 +242,10 @@ const combineTagsWithCommits = async function(tags, commits, milestones) {
       hotfixes.push(hotfix);
     }
 
+    console.log(`hotfix commit being added: ${minorRelease.commit.messageHeadline} - ${minorRelease.commit.startDate}`);
     hotfix.commits.push(minorRelease.commit);
   });
-  
+
   majorTagsWithCommits = majorTagsWithCommits.map(majorTagWithCommits => {
     return {
       name: majorTagWithCommits.name,

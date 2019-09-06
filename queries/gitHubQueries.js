@@ -22,7 +22,7 @@ const getTagsQuery = `query GetTags($owner: String!, $name: String!){
 }`;
 const getMilestonesQuery = `query GetMilestones($owner: String!, $qualtraxRepo: String!, $qualtraxWebRepo: String!){
   qualtraxRepo :repository(owner: $owner, name: $qualtraxRepo) {
-    milestones(first: 100, states: CLOSED, orderBy: { field: DUE_DATE, direction: DESC }) {
+    milestones(first: 100, orderBy: { field: DUE_DATE, direction: DESC }) {
       edges {
         node {
           title
@@ -40,7 +40,7 @@ const getMilestonesQuery = `query GetMilestones($owner: String!, $qualtraxRepo: 
     }
   },
   qualtraxWebRepo :repository(owner: $owner, name: $qualtraxWebRepo) {
-    milestones(first: 100, states: CLOSED, orderBy: { field: DUE_DATE, direction: DESC }) {
+    milestones(first: 100, orderBy: { field: DUE_DATE, direction: DESC }) {
     edges {
       node {
         title
